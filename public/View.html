@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-time Text Editor</title>
+</head>
+<body>
+  <textarea id="editor" rows="10" cols="30" ></textarea>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const editor = document.getElementById('editor');
+    socket.on('text-update', (text) => {
+      editor.value = text;
+    });
+  </script>
+</body>
+</html>

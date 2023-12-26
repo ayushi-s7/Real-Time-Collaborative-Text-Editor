@@ -1,0 +1,249 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+</head>
+<style>
+.Space {
+  width: 400px;
+  height:25px;
+}
+.info {
+  width: 200px;
+  height:50px;
+  background-color: #6fc4e6;
+  border-radius: 50px;
+  margin:20px;
+  padding-top: 1px;
+  text-align: center;
+  vertical-align: middle;
+}
+.info:hover {
+  width: 200px;
+  height:50px;
+  background-color:  #32aedf;
+  border-radius: 50px;
+  margin:20px;
+  padding-top: 1px;
+  text-align: center;
+  vertical-align: middle;
+  box-shadow: 3px 3px 500px #888888
+}
+</style>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+var offset;
+const socket=io();
+function display2DArrayInTextarea(array) {
+  var table = '';
+  
+  for (var i = 0; i < array.length; i++) {
+    if(i===0){
+      table+="Allowed ip address range for editors:";
+    }
+    else if(i===1){
+      table+="Allowed ip address range for viewers:";
+    }
+    else{
+      table+="Restricted ip address range         :";
+    }
+    table += array[i].join('\t') + '\n';
+  }
+
+  document.getElementById('Final').value = table;
+  socket.emit('redirect',array,document.getElementById("off").value);
+}
+
+function ipv4ToBinary(ipv4Address) {
+  var octets = ipv4Address.split('.');
+  var binaryRepresentation = octets.map(function(octet) {
+    var binaryOctet = parseInt(octet).toString(2).padStart(8, '0');
+    return binaryOctet;
+  }).join('');
+  return binaryRepresentation;
+}
+
+function binaryToIPv4(binaryRepresentation) {
+  let groups = binaryRepresentation.match(/.{1,8}/g);
+  console.log(groups);
+  console.log(typeof(groups[0]));
+  var decimalIPv4 = groups.map(function(binaryOctet) {
+    var decimalOctet = parseInt(binaryOctet, 2);
+    return decimalOctet;
+  }).join('.');
+
+  return decimalIPv4;
+}
+
+function decimalToBinary(decimalNumber) {
+    if (typeof decimalNumber !== 'number' || isNaN(decimalNumber)) {
+        throw new Error('Input must be a valid number');
+    }
+
+    return decimalNumber.toString(2);
+}
+
+function padding(no,bitsofnoofparts){
+  var temp=decimalToBinary(no);
+  // console.log("temp",temp);
+  // console.log("no",typeof(no));
+  var pad=bitsofnoofparts-temp.length;
+  var ans="0".repeat(pad);
+  ans+=temp;
+  return ans;
+}
+
+
+    function validate(){
+
+    var subnet = new Array(3);
+    var net=document.getElementById('net').value;
+    subnet[0]=document.getElementById('S1').value;
+    subnet[1]=document.getElementById('S2').value;
+    subnet[2]=document.getElementById('S3').value;
+    var total=parseInt(subnet[0])+parseInt(subnet[1])+parseInt(subnet[2]);
+    total=Math.pow(2,Math.ceil(Math.log2(total)));
+    // console.log(total);
+
+    var min_s=Math.min(subnet[0],subnet[1],subnet[2]);
+    var len = parseInt(total/min_s);
+    // console.log(len);
+    var arr = new Array(len).fill(0);
+    var temp2=0;
+    var low=0;
+    var high=0;
+    var bitsofnoofparts=Math.log2(len);
+    
+    var x=net.split("/");
+    var originalsubnetmask=parseInt(x[1]);
+    var tobechanged=32-originalsubnetmask-Math.ceil(Math.log2(min_s));
+    // console.log("zfxdg");
+    if(tobechanged<0){
+      window.alert("Invalid value entered");
+    }
+    else{
+    var group= [
+      [0, 0],
+      [0, 0],
+      [0, 0]
+    ];
+    for(var i=0;i<3;i++){
+        var temp=parseInt(subnet[i]);
+        low=(temp2/min_s);
+        high=(temp2+temp)/min_s;
+        while(high<=len){
+            var flag=0;
+
+            for(var j=low;j<high;j++){
+                if(arr[j]!=0){
+                    flag=1;
+                    break;
+                }
+            }
+
+            if(flag==0){
+                for(var j=low;j<high;j++){
+                    arr[j]=i+1;
+                }
+                group[i][0]=low;
+                group[i][1]=high-1;
+                break;
+            }
+            else{
+                temp2+=temp;
+                low=(temp2/min_s);
+                high=(temp2+temp)/min_s;
+            }
+            
+        }
+        low=0;
+        high=0;
+        temp2=0;
+      }
+    }
+    var ip_range= [
+      ["", ""],
+      ["", ""],
+      ["", ""]
+    ];
+  console.table(group);
+  for(var i=0;i<3;i++){
+    var originalnetwork=JSON.stringify(ipv4ToBinary(x[0])).substring(1,originalsubnetmask+1);
+    var appen=(32-originalsubnetmask-Math.ceil(Math.log2(min_s)))-bitsofnoofparts;
+    if(appen<0){
+      window.alert("Invalid Value entered");
+      break;
+    }
+    var appen_str='0'.repeat(appen);
+    var appen_str_low=padding(group[i][0],bitsofnoofparts);
+    var appen_str_high=padding(group[i][1],bitsofnoofparts);
+    var appen_str_first='0'.repeat(Math.ceil(Math.log2(min_s)));
+    var appen_str_last='1'.repeat(Math.ceil(Math.log2(min_s)));
+    var ip_low=originalnetwork+appen_str+appen_str_low+appen_str_first;
+    var ip_high=originalnetwork+appen_str+appen_str_high+appen_str_last;
+    console.log(binaryToIPv4(ip_low));
+    console.log("@");
+    console.log(binaryToIPv4(ip_high));
+    console.log("@");
+    ip_range[i][0]=binaryToIPv4(ip_low);
+    ip_range[i][1]=binaryToIPv4(ip_high);
+  }
+  display2DArrayInTextarea(ip_range);
+
+
+  }
+
+</script>
+<body>
+<form method="post" action="http://localhost:3000/process" >
+<div class="form_wrapper">
+    <div class="form_container">
+      <div class="title_container">
+        <h2>User Form</h2>
+      </div>
+      <div class="row clearfix">
+        <div class="">
+          <form>
+            <div class="row clearfix">
+                <div class="col_half">
+                  <div class="input_field"> <span><i aria-hidden="true" class="fa fa-user"></i></span>
+                  Enter the Network Id : <input type="text" id="net" placeholder="Network ID" required="true">
+                  </div>
+                </div>
+            </div>
+            <div class="Space">
+            </div>
+            <div class="row clearfix">
+              <div class="col_half">
+                <div class="input_field"> <span><i aria-hidden="true" class="fa fa-user"></i></span>
+                  Enter the size of the first subnet : <input type="text" id="S1" placeholder="" required="true">
+                </div>
+                <div class="Space">
+                </div>
+                <div class="input_field"> <span><i aria-hidden="true" class="fa fa-user"></i></span>
+                    Enter the size of the second subnet : <input type="text" id="S2" placeholder="" required="true">
+                </div>
+                <div class="Space">
+                </div>
+                <div class="input_field"> <span><i aria-hidden="true" class="fa fa-user"></i></span>
+                    Enter the size of the third subnet : <input type="text" id="S3" placeholder="" required="true">
+                </div>
+                <div class="Space">
+                </div>
+                <textarea id="Final" rows="15" cols="75"></textarea>
+                Enter the offset for encryption : <input type="number" id="off" placeholder="" required="true">
+              </div>
+            </div>
+            
+            <div class="Space">
+            </div>
+            <input type="button" onclick="validate()" value="Calculate">
+            <input type="submit" value="Submit">
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+ </form>
+  </body>
+

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-time Text Editor</title>
+</head>
+<body>
+        <form id="numberForm">
+            <label for="userNumber">Please enter a number:</label>
+            <input type="number" id="off" name="userNumber" required>
+            <button type="button" onclick="showWebpage()">Submit</button>
+        </form>
+        <div id="webpageContent" style="display: none;">
+        <textarea id="editor" rows="10" cols="30"></textarea><br>
+        Editors:
+        <textarea id="edit" rows="10" cols="30" disabled="true"></textarea><br>
+        Viewers:
+        <textarea id="view" rows="10" cols="30" disabled="true"></textarea>
+        </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    var offset;
+    var offset2;
+    const editor = document.getElementById('editor');
+    var editor_text;
+    function showWebpage() {
+            offset2 = parseInt(document.getElementById("off").value);
+            console.log(offset2);
+            editor.value=decode(editor_text);
+            document.getElementById("webpageContent").style.display = "block";
+    }
+
+    function decode(text){
+      console.log(text);
+      offset2=parseInt(document.getElementById("off").value);
+      var newalpha = "";
+        for (let i = 0; i < text.length; i++){
+          var x;
+          console.log(text.charCodeAt(i));
+          console.log(offset2);
+          if(i%2==0){
+            x= String.fromCharCode(Math.abs(text.charCodeAt(i)-offset2-1)%256);
+          }
+          else{
+            x= String.fromCharCode(Math.abs(text.charCodeAt(i)-offset2+1)%256);
+          }
+          console.log(x);
+          newalpha+=x;
+        }
+        return newalpha;
+    }
+
+    function encode(text){
+      var newalpha = "";
+        for (let i = 0; i < text.length; i++){
+          var x;
+          // console.log((text.charCodeAt(i)+offset)+1)%256;
+          if(i%2==0){
+            x = String.fromCharCode((text.charCodeAt(i)+offset+1)%256);
+          }
+          else{
+            x= String.fromCharCode((text.charCodeAt(i)+offset-1)%256);
+          }
+          newalpha+=x;
+         
+        }
+        return newalpha;
+    }
+
+    editor.addEventListener('input', () => {
+      const text = editor.value;
+      console.log(text);
+      console.log(typeof(offset2),typeof(offset));
+      if(offset==offset2)
+        socket.emit('update', encode(text));
+      else{
+        window.alert("Wrong encryption key");
+      }   
+
+    });
+    socket.on('updated', (text,off) => {
+      editor_text=text;
+      console.log(text);
+      offset=parseInt(off);
+      // console.log(decode(text));
+      // console.log(de)
+      editor.value = decode(editor_text);
+      // editor.value=text;
+      console.log(decode(editor_text));
+    });
+
+    socket.on('view', (text,off) => {
+      editor_text=text;
+      console.log(text);
+      offset=parseInt(off);
+      // console.log(decode(text));
+      // console.log(de)
+      editor.value = decode(editor_text);
+      // editor.value=text;
+      console.log(decode(editor_text));
+      editor.setAttribute("disabled",true);
+    });
+
+    socket.on('edit_update',(text)=>{
+      console.log(text);
+      edit.value = text.join(', ');
+      
+    })
+
+    socket.on('view_update',(text)=>{
+      console.log(text);
+      view.value = text.join(', ');
+    })
+
+
+  </script>
+</body>
+</html>
